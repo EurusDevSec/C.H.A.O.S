@@ -208,4 +208,5 @@ __marimo__/
 
 
 *.md
-!plan.md 
+!plan.md
+!sprint1.md 
