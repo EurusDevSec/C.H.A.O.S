@@ -26,7 +26,7 @@ def main():
 
     spark.sparkContext.setLogLevel("WARN")
 
-    #2. Định nghĩa Schema
+    # 2. Định nghĩa Schema (Điều chỉnh theo cột trong CSV của bạn)
     schema = StructType([
         StructField("datetime", StringType(), True),
         StructField("temp_c", DoubleType(), True),
@@ -54,8 +54,13 @@ def main():
     # 5. Ghi dữ liệu xuống MinIO (Delta Lake)
     query = parsed_df.writeStream \
         .format("delta") \
-        .option("path", "s3a://yagi/weather") \
-        .option("checkpointLocation", "s3a://yagi/checkpoint") \
+        .outputMode("append") \
+        .option("checkpointLocation", "s3a://yagi-data/checkpoints/weather") \
+        .option("path", "s3a://yagi-data/bronze/weather") \
         .start()
 
+    print("Spark Streaming is running... Data is flowing to MinIO.")
     query.awaitTermination()
+
+if __name__ == "__main__":
+    main()
