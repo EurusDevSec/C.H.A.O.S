@@ -186,8 +186,12 @@ Mở một terminal mới (Git Bash hoặc CMD), chạy lệnh sau để đưa J
 docker exec -it yagi_spark_master //opt/spark/bin/spark-submit \
   --master spark://spark-master:7077 \
   --conf spark.jars.ivy=//tmp/.ivy \
+  --conf spark.hadoop.fs.s3a.endpoint=http://yagi_minio:9000 \
+  --conf spark.hadoop.fs.s3a.access.key=admin \
+  --conf spark.hadoop.fs.s3a.secret.key=password123 \
   --conf spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem \
   --conf spark.hadoop.fs.s3a.path.style.access=true \
+  --conf spark.hadoop.fs.s3a.connection.ssl.enabled=false \
   --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3,io.delta:delta-spark_2.12:3.1.0,org.apache.hadoop:hadoop-aws:3.3.4 \
   //opt/spark/jobs/spark_ingestion.py
 ```
