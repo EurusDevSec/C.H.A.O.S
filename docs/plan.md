@@ -53,9 +53,9 @@ Hệ thống được thiết kế theo mô hình **Lambda Architecture** tối 
         * Cấu hình Git.
     3.  Viết `docker-compose.yaml`:
         * `portainer`: Monitoring & Container Management.
-        * `kafka`: Image `bitnami/kafka`, KRaft mode (No Zookeeper).
+        * `kafka`: Image `apache/kafka`, KRaft mode (No Zookeeper).
         * `minio`: Image `minio/minio`, tạo bucket `yagi-data`.
-        * `spark-master` & `spark-worker`: Image `bitnami/spark`, giới hạn RAM Worker 2GB.
+        * `spark-master` & `spark-worker`: Image `apache/spark`, giới hạn RAM Worker 2GB.
     4.  Kiểm tra kết nối các service (Smoke Test).
 
 #### 📅 Sprint 2: The Storm Replay - Dòng Chảy Dữ Liệu

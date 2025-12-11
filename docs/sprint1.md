@@ -1,6 +1,6 @@
 # 📅 Sprint 1 Guide: The Foundation
 **Chủ đề:** Xây Dựng Hạ Tầng Container (Infrastructure Layer)
-**Dự án:** Y.A.G.I (Yielding Adaptive Geo-spatial Intelligence)
+**Dự án:** Yagi (Yielding Adaptive Geo-spatial Intelligence)
 **Trạng thái:** 🚀 Ready to Start
 
 ---
@@ -40,15 +40,13 @@ Hãy copy file `Hai phong, Viet Nam 2024-09-05 to 2024-09-09.csv` vào thư mụ
 Tạo file `docker-compose.yaml` tại thư mục gốc. Lưu ý bucket mặc định của MinIO là `yagi-data` và Kafka chạy mode KRaft.
 
 ```yaml
-version: '3.8'
-
 services:
   # --- Visualization & Monitoring ---
   portainer:
     image: portainer/portainer-ce:latest
     container_name: yagi_portainer
     ports:
-      - "9000:9000"
+      - "9002:9000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
@@ -56,24 +54,23 @@ services:
 
   # --- Message Queue (Kafka KRaft Mode - No Zookeeper) ---
   kafka:
-    image: bitnami/kafka:latest
+    image: apache/kafka:latest
     container_name: yagi_kafka
     ports:
       - "9092:9092"
     environment:
       # KRaft settings
-      - KAFKA_CFG_NODE_ID=0
-      - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_NODE_ID=0
+      - KAFKA_PROCESS_ROLES=controller,broker
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
       # Listeners
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
     volumes:
-      - kafka_data:/bitnami/kafka
-    start_period: 30s
-    restart: on-failure
+      - kafka_data:/var/lib/kafka/data
+    restart: on-failure   
 
   # --- Storage (MinIO - Data Lake) ---
   minio:
@@ -93,46 +90,38 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
+    restart: on-failure 
 
   # --- Processing (Spark) ---
   spark-master:
-    image: bitnami/spark:latest
+    image: apache/spark:latest
     container_name: yagi_spark_master
     environment:
-      - SPARK_MODE=master
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_RPC_ENCRYPTION_ENABLED=no
-      - SPARK_LOCAL_STORAGE_ENCRYPTION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
+      - SPARK_NO_DAEMONIZE=true
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
     ports:
       - "8080:8080"
       - "7077:7077"
     volumes:
-      - ./jobs:/opt/bitnami/spark/jobs
+      - ./jobs:/opt/spark/jobs
+    restart: on-failure
 
   spark-worker:
-    image: bitnami/spark:latest
+    image: apache/spark:latest
     container_name: yagi_spark_worker
     environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_MEMORY=2G # Limit RAM
-      - SPARK_WORKER_CORES=2
-      - SPARK_RPC_AUTHENTICATION_ENABLED=no
-      - SPARK_SSL_ENABLED=no
+      - SPARK_NO_DAEMONIZE=true
+    command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
     depends_on:
       - spark-master
     volumes:
-      - ./jobs:/opt/bitnami/spark/jobs
-
-  # --- Init Job (Optional: Create Bucket Automatically) ---
-  # Bạn có thể dùng container 'mc' để tạo bucket tự động,
-  # hoặc làm thủ công trong bước Smoke Test.
+      - ./jobs:/opt/spark/jobs
+    restart: on-failure
 
 volumes:
+  portainer_data:
   kafka_data:
   minio_data:
-  portainer_data:
 ```
 
 ### Bước 2: Start Services
@@ -142,9 +131,9 @@ docker-compose up -d
 ```
 
 ### Bước 3: Smoke Test & Setup Bucket
-1.  **Portainer (localhost:9000):** Kiểm tra xem cả 5 container (kafka, minio, spark-master, spark-worker, portainer) có xanh không.
+1.  **Portainer (localhost:9002):** Kiểm tra xem cả 5 container (kafka, minio, spark-master, spark-worker, portainer) có xanh không.
 2.  **MinIO (localhost:9001):**
-    *   Login: `admin` / `password1234`.
+    *   Login: `admin` / `password123`.
     *   **QUAN TRỌNG:** Vào menu **Buckets** -> Create Bucket -> Đặt tên: `yagi-data` (Đây là nơi chứa dữ liệu bão).
 3.  **Spark (localhost:8080):** Đảm bảo Worker đang Alive.
 
