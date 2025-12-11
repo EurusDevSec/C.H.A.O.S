@@ -144,7 +144,7 @@ docker-compose up -d
 ### Bước 3: Smoke Test & Setup Bucket
 1.  **Portainer (localhost:9000):** Kiểm tra xem cả 5 container (kafka, minio, spark-master, spark-worker, portainer) có xanh không.
 2.  **MinIO (localhost:9001):**
-    *   Login: `admin` / `password123`.
+    *   Login: `admin` / `password1234`.
     *   **QUAN TRỌNG:** Vào menu **Buckets** -> Create Bucket -> Đặt tên: `yagi-data` (Đây là nơi chứa dữ liệu bão).
 3.  **Spark (localhost:8080):** Đảm bảo Worker đang Alive.
 
