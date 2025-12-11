@@ -78,6 +78,17 @@ services:
       - ./jobs:/opt/spark/jobs
     restart: on-failure
 
+    # --- Prediction Service ---
+  predictor:
+    build: ./predictor
+    container_name: yagi-predictor
+    depends_on:
+      - kafka
+    restart: on-failure
+    environment:
+      - PYTHONUNBUFFERED=1
+
+
 volumes:
   portainer_data:
   kafka_data:
