@@ -122,15 +122,25 @@ def main():
     # Force read from beginning
     consumer.seek_to_beginning()
     
+    # Check position
+    for tp in topic_partitions:
+        print(f"📍 Current position for {tp}: {consumer.position(tp)}", flush=True)
+
+    print("🔄 Entering poll loop...", flush=True)
+    
     # Poll loop
     try:
         while True:
             # Poll for messages
+            # print("Polling...", flush=True)
             msg_pack = consumer.poll(timeout_ms=1000)
             
             if not msg_pack:
+                # print("No messages found in this poll.", flush=True)
                 continue
             
+            print(f"📦 Fetched {sum(len(msgs) for msgs in msg_pack.values())} messages", flush=True)
+
             for tp, messages in msg_pack.items():
                 for message in messages:
                     print(f"📥 Received message: {message.value.get('datetime')}", flush=True)
