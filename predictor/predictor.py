@@ -1,10 +1,8 @@
-import warnings
-warnings.filterwarnings("ignore", category=UserWarning)
-
 import json
 import time
 import joblib
 import numpy as np
+import pandas as pd
 from kafka import KafkaConsumer, KafkaProducer, TopicPartition
 
 # Cấu hình
@@ -157,16 +155,18 @@ def main():
                     try:
                         if model is not None:
                             # ML-based prediction (dùng đúng tên cột từ CSV)
-                            features = np.array([[
+                            feature_names = ['temp', 'sealevelpressure', 'humidity', 'cloudcover', 'precip', 'windgust']
+                            features_df = pd.DataFrame([[
                                 record.get('temp', 0) or 0,
                                 record.get('sealevelpressure', 1013) or 1013,
                                 record.get('humidity', 50) or 50,
                                 record.get('cloudcover', 0) or 0,
                                 record.get('precip', 0) or 0,
                                 record.get('windgust', 0) or 0
-                            ]])
-                            prediction = model.predict(features)[0]
-                            proba = model.predict_proba(features)[0]
+                            ]], columns=feature_names)
+                            
+                            prediction = model.predict(features_df)[0]
+                            proba = model.predict_proba(features_df)[0]
                             confidence = max(proba)
                         else:
                             # Rule-based fallback
