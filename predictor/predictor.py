@@ -111,6 +111,14 @@ def main():
     consumer.assign(topic_partitions)
     print(f"✅ Manually assigned to partitions: {topic_partitions}", flush=True)
     
+    # Debug: Check offsets
+    try:
+        beginning_offsets = consumer.beginning_offsets(topic_partitions)
+        end_offsets = consumer.end_offsets(topic_partitions)
+        print(f"📊 Topic Offsets - Beginning: {beginning_offsets}, End: {end_offsets}", flush=True)
+    except Exception as e:
+        print(f"⚠️ Error checking offsets: {e}", flush=True)
+
     # Force read from beginning
     consumer.seek_to_beginning()
     
