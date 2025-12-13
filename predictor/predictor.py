@@ -87,16 +87,6 @@ def main():
             time.sleep(5)
     
     print(f"📡 Listening to topic: {INPUT_TOPIC}", flush=True)
-    
-    # Debug: Check topics
-    try:
-        topics = consumer.topics()
-        print(f"📋 Available topics: {topics}", flush=True)
-        if INPUT_TOPIC not in topics:
-            print(f"⚠️ Warning: Topic '{INPUT_TOPIC}' not found in available topics!", flush=True)
-    except Exception as e:
-        print(f"⚠️ Error fetching topics: {e}", flush=True)
-
     print(f"📢 Alerts will be sent to: {ALERT_TOPIC}", flush=True)
     
     # Manual Partition Assignment (Bypass Group Rebalance issues)
@@ -111,38 +101,18 @@ def main():
     consumer.assign(topic_partitions)
     print(f"✅ Manually assigned to partitions: {topic_partitions}", flush=True)
     
-    # Debug: Check offsets
-    try:
-        beginning_offsets = consumer.beginning_offsets(topic_partitions)
-        end_offsets = consumer.end_offsets(topic_partitions)
-        print(f"📊 Topic Offsets - Beginning: {beginning_offsets}, End: {end_offsets}", flush=True)
-    except Exception as e:
-        print(f"⚠️ Error checking offsets: {e}", flush=True)
-
     # Force read from beginning
     consumer.seek_to_beginning()
     
-    # Check position
-    for tp in topic_partitions:
-        print(f"📍 Current position for {tp}: {consumer.position(tp)}", flush=True)
-
-    print("🔄 Entering poll loop...", flush=True)
-    
     # Poll loop
-    last_log_time = time.time()
     try:
         while True:
             # Poll for messages
             msg_pack = consumer.poll(timeout_ms=1000)
             
             if not msg_pack:
-                if time.time() - last_log_time > 5:
-                    print("⏳ Polling... No messages returned from broker.", flush=True)
-                    last_log_time = time.time()
                 continue
             
-            print(f"📦 Fetched {sum(len(msgs) for msgs in msg_pack.values())} messages", flush=True)
-
             for tp, messages in msg_pack.items():
                 for message in messages:
                     # print(f"📥 Received message: {message.value}", flush=True)
