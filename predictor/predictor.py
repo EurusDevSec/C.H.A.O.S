@@ -1,3 +1,6 @@
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+
 import json
 import time
 import joblib
@@ -64,9 +67,8 @@ def main():
         try:
             consumer = KafkaConsumer(
                 bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-                value_deserializer=lambda m: json.loads(m.decode('utf-8')),
                 auto_offset_reset='earliest',
-                group_id='predictor-group-v6'
+                # group_id='predictor-group-v6' # Disable group_id for manual assignment
             )
             print("✅ Connected to Kafka Consumer", flush=True)
         except Exception as e:
@@ -129,22 +131,28 @@ def main():
     print("🔄 Entering poll loop...", flush=True)
     
     # Poll loop
+    last_log_time = time.time()
     try:
         while True:
             # Poll for messages
-            # print("Polling...", flush=True)
             msg_pack = consumer.poll(timeout_ms=1000)
             
             if not msg_pack:
-                # print("No messages found in this poll.", flush=True)
+                if time.time() - last_log_time > 5:
+                    print("⏳ Polling... No messages returned from broker.", flush=True)
+                    last_log_time = time.time()
                 continue
             
             print(f"📦 Fetched {sum(len(msgs) for msgs in msg_pack.values())} messages", flush=True)
 
             for tp, messages in msg_pack.items():
                 for message in messages:
-                    print(f"📥 Received message: {message.value.get('datetime')}", flush=True)
-                    record = message.value
+                    # print(f"📥 Received message: {message.value}", flush=True)
+                    try:
+                        record = json.loads(message.value.decode('utf-8'))
+                    except Exception as e:
+                        print(f"❌ Error decoding message: {e}", flush=True)
+                        continue
                     
                     try:
                         if model is not None:
