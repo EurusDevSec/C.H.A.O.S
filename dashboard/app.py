@@ -3,7 +3,6 @@ import pandas as pd
 import json
 from kafka import KafkaConsumer
 import time
-from datetime import datetime
 
 # Cấu hình trang
 st.set_page_config(
@@ -21,10 +20,6 @@ KAFKA_BOOTSTRAP_SERVERS = 'yagi-kafka:9092'
 TOPIC_WEATHER = 'weather-stream'
 TOPIC_ALERTS = 'storm-alerts'
 
-# Hàm nhận dữ liệu từ Kafka (giả lập polling để không block UI)
-# Lưu ý: Streamlit hoạt động theo cơ chế rerun, nên việc tích hợp Kafka consumer trực tiếp
-# cần khéo léo. Ở đây ta dùng placeholder để update.
-
 # Tạo các placeholder cho UI
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -39,66 +34,85 @@ st.divider()
 col_chart_1, col_chart_2 = st.columns(2)
 with col_chart_1:
     st.subheader("Tốc độ gió (km/h)")
-    chart_wind = st.line_chart(x=None, y=None, height=300)
+    chart_wind_placeholder = st.empty()
 
 with col_chart_2:
     st.subheader("Áp suất khí quyển (mb)")
-    chart_pressure = st.line_chart(x=None, y=None, height=300)
+    chart_pressure_placeholder = st.empty()
 
 st.subheader("🚨 Nhật ký Cảnh báo")
 alert_log = st.empty()
 
-# Khởi tạo session state để lưu dữ liệu
+# Khởi tạo session state
 if 'data' not in st.session_state:
-    st.session_state.data = pd.DataFrame(columns=['timestamp', 'windspeed', 'pressure'])
-if 'alerts' not in st.session_state:
-    st.session_state.alerts = []
+    # Khởi tạo DataFrame với đúng kiểu dữ liệu để tránh warning
+    st.session_state.data = pd.DataFrame({
+        'timestamp': pd.Series(dtype='str'),
+        'windspeed': pd.Series(dtype='float'),
+        'pressure': pd.Series(dtype='float')
+    })
 
-def consume_data():
-    consumer = KafkaConsumer(
-        TOPIC_WEATHER,
-        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-        value_deserializer=lambda m: json.loads(m.decode('utf-8')),
-        auto_offset_reset='latest', # Chỉ đọc dữ liệu mới nhất
-        group_id='dashboard-group-v1',
-        consumer_timeout_ms=100 # Không chờ quá lâu
-    )
+def init_consumer():
+    try:
+        consumer = KafkaConsumer(
+            TOPIC_WEATHER,
+            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+            value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+            auto_offset_reset='latest',
+            group_id='dashboard-group-v2', # Đổi group ID mới
+            consumer_timeout_ms=1000
+        )
+        return consumer
+    except Exception as e:
+        st.error(f"Không thể kết nối Kafka: {e}")
+        return None
 
-    # Lấy dữ liệu mới
-    new_rows = []
-    for message in consumer:
-        record = message.value
-        timestamp = record.get('datetime')
-        wind = record.get('windspeed', 0)
-        pressure = record.get('sealevelpressure', 0)
-
-        new_rows.append({
-            'timestamp': timestamp,
-            'windspeed': wind,
-            'pressure': pressure
-        })
-
-        # Update Metrics ngay lập tức
-        metric_wind.metric("Gió", f"{wind} km/h", delta_color="inverse")
-        metric_pressure.metric("Áp suất", f"{pressure} mb")
-
-        if wind > 60:
-            metric_status.error("⚠️ NGUY HIỂM")
-        else:
-            metric_status.success("✅ AN TOÀN")
-
-    # Cập nhật DataFrame
-    if new_rows:
-        new_df = pd.DataFrame(new_rows)
-        st.session_state.data = pd.concat([st.session_state.data, new_df], ignore_index=True).tail(100) # Giữ 100 điểm dữ liệu cuối
-
-        # Vẽ lại biểu đồ
-        chart_wind.line_chart(st.session_state.data.set_index('timestamp')['windspeed'])
-        chart_pressure.line_chart(st.session_state.data.set_index('timestamp')['pressure'])
-
-# Nút để chạy (Streamlit tự động rerun nhưng ta cần vòng lặp cho Kafka)
+# Nút để chạy
 if st.button('Bắt đầu giám sát'):
-    st.success("Đang kết nối Kafka...")
-    while True:
-        consume_data()
-        time.sleep(1)
+    consumer = init_consumer()
+    
+    if consumer:
+        st.success("Đã kết nối Kafka! Đang chờ dữ liệu...")
+        
+        # Vòng lặp chính
+        while True:
+            # Poll dữ liệu
+            msg_pack = consumer.poll(timeout_ms=1000)
+            
+            new_rows = []
+            for tp, messages in msg_pack.items():
+                for message in messages:
+                    record = message.value
+                    new_rows.append({
+                        'timestamp': record.get('datetime'),
+                        'windspeed': float(record.get('windspeed', 0)),
+                        'pressure': float(record.get('sealevelpressure', 0))
+                    })
+
+            if new_rows:
+                # Cập nhật DataFrame
+                new_df = pd.DataFrame(new_rows)
+                st.session_state.data = pd.concat([st.session_state.data, new_df], ignore_index=True).tail(100)
+                
+                # Lấy giá trị mới nhất để hiển thị Metric
+                latest = new_rows[-1]
+                wind = latest['windspeed']
+                pressure = latest['pressure']
+                
+                metric_wind.metric("Gió", f"{wind} km/h", delta_color="inverse")
+                metric_pressure.metric("Áp suất", f"{pressure} mb")
+                
+                if wind > 60:
+                    metric_status.error("⚠️ NGUY HIỂM")
+                else:
+                    metric_status.success("✅ AN TOÀN")
+
+                # Vẽ lại biểu đồ (Dùng placeholder để replace chart cũ)
+                with chart_wind_placeholder.container():
+                    st.line_chart(st.session_state.data.set_index('timestamp')['windspeed'], height=300)
+                
+                with chart_pressure_placeholder.container():
+                    st.line_chart(st.session_state.data.set_index('timestamp')['pressure'], height=300)
+            
+            # Sleep nhẹ để giảm tải CPU nếu không có tin nhắn
+            time.sleep(0.1)
