@@ -86,62 +86,36 @@ The system follows a modernized **Lambda Architecture**, optimized for resource-
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Quick Start
 
-Follow these steps to get a local copy up and running.
+Get the system running in 3 simple steps.
 
 ### Prerequisites
-
-*   **Docker Desktop** (Engine 20.10+)
+*   **Docker Desktop** (running)
 *   **Python 3.9+**
-*   **Git**
 
-### Installation
+### Installation & Usage
 
-1.  **Clone the repo**
+1.  **Clone & Enter**
     ```sh
     git clone https://github.com/EurusDevSec/Yagi.git
     cd Yagi
     ```
 
-2.  **Environment Setup**
-    Create a `.env` file (if required) or configure `docker-compose.yaml` as needed. The default configuration is optimized for local development.
-
-3.  **Start Services**
-    Launch the infrastructure using Docker Compose:
+2.  **Start System** (Backend, Dashboard, Spark, Kafka)
     ```sh
     docker-compose up -d
     ```
-    *Wait for a few minutes for Kafka and MinIO to initialize fully.*
+    *Wait ~30s for services to initialize.*
 
-4.  **Verify Status**
-    Check if all containers are healthy:
+3.  **Simulate Typhoon** (Inject Data)
     ```sh
-    docker ps
+    python jobs/yagi_producer.py
     ```
 
----
+👉 **View the Real-time Dashboard:** [http://localhost:8501](http://localhost:8501)
 
-## 🎮 Usage
-
-### 1. Ingest Data (Simulate Typhoon)
-Run the producer script to start replaying the Yagi typhoon data into Kafka:
-```sh
-python jobs/yagi_producer.py
-```
-
-### 2. Start Processing (Spark)
-Submit the Spark Streaming job to process the stream and write to Delta Lake:
-```sh
-docker exec -it spark-master spark-submit --packages io.delta:delta-core_2.12:2.4.0 /jobs/spark_ingestion.py
-```
-
-### 3. Launch Dashboard
-Access the Streamlit dashboard to view real-time metrics:
-```sh
-streamlit run dashboard/app.py
-```
-*Open your browser at `http://localhost:8501`*
+> **Note:** For a detailed step-by-step demo script, please refer to [docs/demo_guide.md](docs/demo_guide.md).
 
 
 
