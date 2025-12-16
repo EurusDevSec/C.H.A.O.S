@@ -64,6 +64,8 @@ During Typhoon Yagi, traditional warning systems faced latency and scalability i
 
 The system follows a modernized **Lambda Architecture**, optimized for resource-constrained environments (e.g., 16GB RAM):
 
+![alt text](image.png)
+
 | Layer | Component | Description |
 | :--- | :--- | :--- |
 | **Ingestion** | **Apache Kafka (KRaft)** | High-throughput message buffer. Zookeeper-less for efficiency. |
